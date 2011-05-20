@@ -85,16 +85,6 @@ uint32_t CIffContainer::GetValueAtOffset(const int64_t iOffset, CMemoryMappedFil
 	uint8_t *pData = (uint8_t*)pFile.GetView();
 	pData = pData + iOffset;
 	return (*((uint32_t*)pData));
-
-	/* 
-	dumb-ass bug below..
-	offset might not align to 4-bytes..
-	need 1-byte alignment
-
-	locate value, byte-offset to value-index
-	uint32_t *pData = (uint32_t*)pFile.GetView();
-	return pData[iOffset/sizeof(uint32_t)];
-	*/
 }
 
 uint8_t *CIffContainer::GetViewByOffset(const int64_t iOffset, CMemoryMappedFile &pFile)
@@ -112,41 +102,20 @@ CIffHeader *CIffContainer::ReadHeader(int64_t &iOffset, CMemoryMappedFile &pFile
 	}
 
 	uint32_t *pData = (uint32_t*)pFile.GetView();
-	m_pHeader = new CIffHeader();
-	m_pHeader->m_iFileID = pData[0]; // generic type, "FORM" usually
+	CIffHeader *pHeader = new CIffHeader();
+	pHeader->m_iFileID = pData[0]; // generic type, "FORM" usually
 
 	// keep values from header and byteswap (big->little),
 	// size before ID in header
-	m_pHeader->m_iDataSize = Swap4(pData[1]); // datasize according to header
+	pHeader->m_iDataSize = Swap4(pData[1]); // datasize according to header
 
-	// start after file header
-	iOffset = 8;
-
-	return m_pHeader;
-}
-
-CIffChunk *CIffContainer::ReadFirstChunk(int64_t &iOffset, CMemoryMappedFile &pFile)
-{
-	if (pFile.GetSize() < 12)
+	iOffset = 8; // after header
+	if (pFile.GetSize() >= 12)
 	{
-		return nullptr;
+		pHeader->m_iTypeID = pData[2]; // actual file type (e.g. ILBM);
+		iOffset = 12;
 	}
-	
-	uint32_t *pData = (uint32_t*)pFile.GetView();
-
-	// prepare for first chunk after file-header (e.g. "ILBM")
-	CIffChunk *pCurrent = new CIffChunk();
-	pCurrent->m_iChunkID = pData[2]; // actual file type (e.g. ILBM)
-	pCurrent->m_iChunkSize = (m_pHeader->m_iDataSize -4);
-	
-	// data size in file header
-	//m_pHeader->m_pFirst->m_iChunkSize = Swap4(pData[3]);
-
-	iOffset = 12;
-	pCurrent->m_iOffset = iOffset;
-	
-	m_pHeader->m_pFirst = pCurrent;
-	return m_pHeader->m_pFirst;
+	return pHeader;
 }
 
 CIffChunk *CIffContainer::ReadNextChunk(int64_t &iOffset, CMemoryMappedFile &pFile)
@@ -172,20 +141,38 @@ CIffChunk *CIffContainer::ReadNextChunk(int64_t &iOffset, CMemoryMappedFile &pFi
 	return pCurrent;
 }
 
-CIffHeader *CIffContainer::ParseChunks(CMemoryMappedFile &pFile)
+CIffHeader *CIffContainer::ParseFileChunks(CMemoryMappedFile &pFile)
 {
 	int64_t iOffset = 0;
+	
 	CIffHeader *pHead = ReadHeader(iOffset, pFile);
 	if (pHead == nullptr)
 	{
+		// failure reading?
 		return pHead;
 	}
+	m_pHeader = pHead;
 	
-	CIffChunk *pCurrent = ReadFirstChunk(iOffset, pFile);
+	/* for composite-forms?
+	if (m_pHeader == nullptr)
+	{
+		m_pHeader = pHead;
+	}
+	else
+	{
+		m_pHeader->m_Composite = pNext;
+	}
+	*/
+
+	/*
+	CIffChunk *pCurrent = ReadFirstChunk(pHead, iOffset, pFile);
 	if (pCurrent == nullptr)
 	{
 		return pHead;
 	}
+	*/
+	
+	CIffChunk *pPrev = nullptr;
 
 	// verify we end also:
 	// in case of padding we might have infinite loop
@@ -196,19 +183,27 @@ CIffHeader *CIffContainer::ParseChunks(CMemoryMappedFile &pFile)
 		CIffChunk *pNext = ReadNextChunk(iOffset, pFile);
 		if (pNext != nullptr)
 		{
-			// link and switch (check that compiler doesn't reorder these)
-			//
-			pCurrent->m_pNext = pNext;
-			pNext->m_pPrevious = pCurrent;
-			pCurrent = pNext;
+			pNext->m_pPrevious = pPrev;
+			if (pPrev != nullptr)
+			{
+				// not first -> link to new
+				pPrev->m_pNext = pNext;
+			}
+			else
+			{
+				// first
+				pHead->m_pFirst = pNext;
+			}
+			pPrev = pNext;
 		}
+		
 		// TODO: sub-chunks of node?
 		// (these are file-type and node specific if any..)
-		//CreateSubChunkNode(pCurrent, iOffset, pFile);
+		//CreateSubChunkNode(pPrev, iOffset, pFile);
 		
 		// composite FORM?
 		// -> currently not supported.. (bug)
-		if (pCurrent->m_iChunkID == MakeTag("FORM"))
+		if (pPrev->m_iChunkID == MakeTag("FORM"))
 		{
 			break;
 		}
@@ -275,6 +270,6 @@ CIffHeader *CIffContainer::ParseIffFile(CMemoryMappedFile &pFile)
 	}
 	*/
 
-	return ParseChunks(pFile);
+	return ParseFileChunks(pFile);
 }
 

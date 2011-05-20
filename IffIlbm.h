@@ -130,6 +130,7 @@ public:
 	virtual ~CIffIlbm(void);
 
 	bool ParseFile(LPCTSTR szPathName);
+	bool ParseChunks();
 };
 
 #endif // ifndef _IFFILBM_H_

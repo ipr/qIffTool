@@ -195,8 +195,13 @@ bool CIffIlbm::ParseFile(LPCTSTR szPathName)
 		return false;
 	}
 
+	return ParseChunks();
+}
+
+bool CIffIlbm::ParseChunks()
+{
 	// we expect ILBM-type IFF-file
-	if (m_pHead->m_iFileID != MakeTag("ILBM"))
+	if (m_pHead->m_iTypeID != MakeTag("ILBM"))
 	{
 		return false;
 	}
@@ -281,6 +286,6 @@ bool CIffIlbm::ParseFile(LPCTSTR szPathName)
 
 		pChunk = pChunk->m_pNext;
 	}
-
+	
 	return true;
 }

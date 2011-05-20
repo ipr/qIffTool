@@ -19,7 +19,7 @@
 
 // fwd. decl.
 //
-class CIffHeader;
+//class CIffHeader;
 class CIffChunk; 
 class CIffSubChunk; 
 
@@ -117,6 +117,7 @@ class CIffHeader
 public:
 	CIffHeader() 
 		: m_pFirst(nullptr)
+	    , m_iTypeID(0)
 		, m_iFileID(0)
 		, m_iDataSize(0)
 		, m_iFileSize(0)
@@ -149,9 +150,15 @@ public:
 	// in case of composite-files
 	// (e.g. ANIM with audio&images)
 	//CIffHeader *m_pComposite;
+	// also need offset?
+	//int64_t m_iOffset;
+	
+	// type of payload in this FORM:
+	// ILBM/8SVX or other
+	uint32_t m_iTypeID;
 
 	// actually CHAR[4],
-	// ID is type of file
+	// tag-ID is type of file (usually "FORM")
 	uint32_t m_iFileID;
 
 	// data size given in file header
@@ -187,11 +194,9 @@ protected:
 	uint32_t GetValueAtOffset(const int64_t iOffset, CMemoryMappedFile &pFile);
 	uint8_t *GetViewByOffset(const int64_t iOffset, CMemoryMappedFile &pFile);
 
-	//bool CheckHeader(CMemoryMappedFile &pFile);
 	CIffHeader *ReadHeader(int64_t &iOffset, CMemoryMappedFile &pFile);
-	CIffChunk *ReadFirstChunk(int64_t &iOffset, CMemoryMappedFile &pFile);
 	CIffChunk *ReadNextChunk(int64_t &iOffset, CMemoryMappedFile &pFile);
-	CIffHeader *ParseChunks(CMemoryMappedFile &pFile);
+	CIffHeader *ParseFileChunks(CMemoryMappedFile &pFile);
 
 protected:
 

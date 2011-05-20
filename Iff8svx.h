@@ -83,6 +83,7 @@ public:
 	virtual ~CIff8svx(void);
 
 	bool ParseFile(LPCTSTR szPathName);
+	bool ParseChunks();
 };
 
 #endif // ifndef _IFF8SVX_H_

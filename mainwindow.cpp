@@ -19,9 +19,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	connect(this, SIGNAL(FileSelection(QString)), this, SLOT(onFileSelected(QString)));
 	
 	QStringList treeHeaders;
-	treeHeaders << "Chunk type" 
-			<< "Offset" 
-			<< "Size" ;
+	treeHeaders << "Chunk"
+	            //<< "Type" 
+	            << "Offset" 
+	            << "Size" ;
 	ui->treeWidget->setColumnCount(treeHeaders.size());
 	ui->treeWidget->setHeaderLabels(treeHeaders);
 	
@@ -57,21 +58,24 @@ void MainWindow::onFileSelected(QString szArchiveFile)
 	CMemoryMappedFile File;
 	if (File.Create(szFile.c_str()) == false)
 	{
+		ui->statusBar->showMessage("Failure opening file");
 		return;
 	}
-	
-	QString szMsg;
-	szMsg.append("File size: ").append(QString::number(File.GetSize()));
-	ui->statusBar->showMessage(szMsg);
 	
 	CIffContainer Iff;
 	CIffHeader *pHead = Iff.ParseIffFile(File);
 	if (pHead == nullptr)
 	{
+		ui->statusBar->showMessage("No supported header");
 		return;
 	}
 
 	setWindowTitle(m_szBaseTitle + " - " + szArchiveFile);
+	
+	QString szMsg;
+	szMsg.append("File size: ").append(QString::number(File.GetSize()))
+	        .append(" File type: ").append(IdToString(pHead->m_iTypeID));
+	ui->statusBar->showMessage(szMsg);
 	
 	// file head-chunk
 	QTreeWidgetItem *pTopItem = new QTreeWidgetItem((QTreeWidgetItem*)0);

@@ -45,8 +45,13 @@ bool CIff8svx::ParseFile(LPCTSTR szPathName)
 		return false;
 	}
 
+	return ParseChunks();
+}
+
+bool CIff8svx::ParseChunks()
+{
 	// we expect 8SVX-type IFF-file
-	if (m_pHead->m_iFileID != MakeTag("8SVX"))
+	if (m_pHead->m_iTypeID != MakeTag("8SVX"))
 	{
 		return false;
 	}

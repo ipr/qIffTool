@@ -17,8 +17,11 @@
 #include "MemoryMappedFile.h"
 
 
-class CIffChunk; // fwd decl
-class CIffSubChunk; // fwd decl
+// fwd. decl.
+//
+class CIffHeader;
+class CIffChunk; 
+class CIffSubChunk; 
 
 
 // not part of general IFF-standard,
@@ -106,6 +109,9 @@ public:
 	int64_t m_iOffset;
 };
 
+// file header node:
+// special only to locate origin
+//
 class CIffHeader
 {
 public:
@@ -139,6 +145,10 @@ public:
 
 	// start from first chunk in file
 	CIffChunk *m_pFirst;
+	
+	// in case of composite-files
+	// (e.g. ANIM with audio&images)
+	//CIffHeader *m_pComposite;
 
 	// actually CHAR[4],
 	// ID is type of file
@@ -157,9 +167,8 @@ public:
 class CIffContainer
 {
 private:
-
-	// should we keep data in this or not?
-	//CIffHeader *m_pHeader;
+	// keep header and related data
+	CIffHeader *m_pHeader;
 
 protected:
 
@@ -180,6 +189,8 @@ protected:
 
 	//bool CheckHeader(CMemoryMappedFile &pFile);
 	CIffHeader *ReadHeader(int64_t &iOffset, CMemoryMappedFile &pFile);
+	CIffChunk *ReadFirstChunk(int64_t &iOffset, CMemoryMappedFile &pFile);
+	CIffChunk *ReadNextChunk(int64_t &iOffset, CMemoryMappedFile &pFile);
 	CIffHeader *ParseChunks(CMemoryMappedFile &pFile);
 
 protected:
@@ -190,37 +201,37 @@ protected:
 	// -> create handler for that type of chunk.
 	// (chunk handling can depend of what format data is stored in general IFF-file)
 	//
+	/*
 	virtual CIffChunk *CreateChunkNode(CIffHeader *pHead, uint32_t iChunkID)
 	{
-		/*
 		if (pHead->m_iFileID == ID_ILBM
 			&& iChunkID == ID_CMAP)
 		{
 			return new CIlbmCmap();
 		}
-		*/
 
 		// should return default-type if non-supported by inherited implementation?
 		return new CIffChunk();
 		// ..although it can be skipped if implementation doesn't support such chunk..
 		//return nullptr;
 	}
+    */
 
 	// similar to above but for (optional) sub-chunks
+	/*
 	virtual CIffSubChunk *CreateSubChunkNode(CIffHeader *pHead, CIffChunk *pChunk, uint32_t iSubChunkID)
 	{
-		/*
 		if (pHead->m_iFileID == ID_XXXX
 			&& pChunk->m_iChunkID == ID_YYYY
 			&& iSubChunkID == ID_ZZZZ)
 		{
 			return new CXYZ();
 		}
-		*/
 
 		// should return null when there is no sub-chunk
 		return nullptr;
 	}
+    */
 
 
 public:

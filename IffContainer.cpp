@@ -106,62 +106,112 @@ uint8_t *CIffContainer::GetViewByOffset(const int64_t iOffset, CMemoryMappedFile
 CIffHeader *CIffContainer::ReadHeader(int64_t &iOffset, CMemoryMappedFile &pFile)
 {
 	// at least header must exist in file
-	if (pFile.GetSize() < 12)
+	if (pFile.GetSize() < 8)
 	{
 		return nullptr;
 	}
 
 	uint32_t *pData = (uint32_t*)pFile.GetView();
-	CIffHeader *pHead = new CIffHeader();
+	m_pHeader = new CIffHeader();
+	m_pHeader->m_iFileID = pData[0]; // generic type, "FORM" usually
 
 	// keep values from header and byteswap (big->little),
 	// size before ID in header
-	pHead->m_iDataSize = Swap4(pData[1]); // datasize according to header
-	pHead->m_iFileID = pData[2]; // actual file type (e.g. ILBM)
+	m_pHeader->m_iDataSize = Swap4(pData[1]); // datasize according to header
 
 	// start after file header
-	// (including beginning "FORM" tag)
-	iOffset = 12;
+	iOffset = 8;
 
-	// just check that some chunks exist also after header
-	if (pFile.GetSize() > 12)
+	return m_pHeader;
+}
+
+CIffChunk *CIffContainer::ReadFirstChunk(int64_t &iOffset, CMemoryMappedFile &pFile)
+{
+	if (pFile.GetSize() < 12)
 	{
-		pHead->m_pFirst = new CIffChunk();
+		return nullptr;
+	}
+	
+	uint32_t *pData = (uint32_t*)pFile.GetView();
+
+	// prepare for first chunk after file-header (e.g. "ILBM")
+	CIffChunk *pCurrent = new CIffChunk();
+	pCurrent->m_iChunkID = pData[2]; // actual file type (e.g. ILBM)
+	pCurrent->m_iChunkSize = (m_pHeader->m_iDataSize -4);
+	
+	// data size in file header
+	//m_pHeader->m_pFirst->m_iChunkSize = Swap4(pData[3]);
+
+	iOffset = 12;
+	pCurrent->m_iOffset = iOffset;
+	
+	m_pHeader->m_pFirst = pCurrent;
+	return m_pHeader->m_pFirst;
+}
+
+CIffChunk *CIffContainer::ReadNextChunk(int64_t &iOffset, CMemoryMappedFile &pFile)
+{
+	// no more chunks
+	if ((pFile.GetSize() - iOffset) < 8)
+	{
+		return nullptr;
 	}
 
-	return pHead;
+	CIffChunk *pCurrent = new CIffChunk();
+
+	// ID followed by size
+	pCurrent->m_iChunkID = GetValueAtOffset(iOffset, pFile);
+	pCurrent->m_iChunkSize = Swap4(GetValueAtOffset(iOffset+4, pFile));
+
+	// keep chunk "raw" data position in file
+	pCurrent->m_iOffset = iOffset +8;
+
+	// offset to next chunk start
+	iOffset += (pCurrent->m_iChunkSize +8);
+	
+	return pCurrent;
 }
 
 CIffHeader *CIffContainer::ParseChunks(CMemoryMappedFile &pFile)
 {
 	int64_t iOffset = 0;
 	CIffHeader *pHead = ReadHeader(iOffset, pFile);
-	CIffChunk *pCurrent = pHead->m_pFirst;
-
-	while (iOffset < pFile.GetSize())
+	if (pHead == nullptr)
 	{
-		// ID followed by size
-		pCurrent->m_iChunkID = GetValueAtOffset(iOffset, pFile);
-		pCurrent->m_iChunkSize = Swap4(GetValueAtOffset(iOffset+4, pFile));
+		return pHead;
+	}
+	
+	CIffChunk *pCurrent = ReadFirstChunk(iOffset, pFile);
+	if (pCurrent == nullptr)
+	{
+		return pHead;
+	}
 
-		// keep chunk "raw" data position in file
-		pCurrent->m_iOffset = iOffset +8;
-
-		// offset to next chunk start
-		iOffset += (pCurrent->m_iChunkSize +8);
-
-		// create next, link it to this and switch to next
-		CIffChunk *pNext = new CIffChunk();
-		pNext->m_pPrevious = pCurrent;
-		pCurrent->m_pNext = pNext;
-		pCurrent = pNext;
-
-		/* 
-		// 
-		pCurrent->m_pNext = new CIffChunk();
-		pCurrent->m_pNext->m_pPrevious = pCurrent;
-		pCurrent = pCurrent->m_pNext;
-		*/
+	// verify we end also:
+	// in case of padding we might have infinite loop
+	// (smaller by one)
+	//
+	while (iOffset+8 < pFile.GetSize())
+	{
+		CIffChunk *pNext = ReadNextChunk(iOffset, pFile);
+		if (pNext != nullptr)
+		{
+			// link and switch (check that compiler doesn't reorder these)
+			//
+			pCurrent->m_pNext = pNext;
+			pNext->m_pPrevious = pCurrent;
+			pCurrent = pNext;
+		}
+		// TODO: sub-chunks of node?
+		// (these are file-type and node specific if any..)
+		//CreateSubChunkNode(pCurrent, iOffset, pFile);
+		
+		// composite FORM?
+		// -> currently not supported.. (bug)
+		if (pCurrent->m_iChunkID == MakeTag("FORM"))
+		{
+			break;
+		}
 	}
 
 	return pHead;
@@ -171,11 +221,16 @@ CIffHeader *CIffContainer::ParseChunks(CMemoryMappedFile &pFile)
 /////////////// public methods
 
 CIffContainer::CIffContainer(void)
+    : m_pHeader(nullptr)
 {
 }
 
 CIffContainer::~CIffContainer(void)
 {
+	if (m_pHeader != nullptr)
+	{
+		delete m_pHeader;
+	}
 }
 
 CIffHeader *CIffContainer::ParseIffFile(CMemoryMappedFile &pFile)

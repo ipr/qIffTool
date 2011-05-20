@@ -84,11 +84,23 @@ void MainWindow::onFileSelected(QString szArchiveFile)
 	CIffChunk *pChunk = pHead->m_pFirst;
 	while (pChunk != nullptr)
 	{
-		QTreeWidgetItem *pSubItem = new QTreeWidgetItem(pTopItem);
-		pSubItem->setText(0, IdToString(pChunk->m_iChunkID));
-		pSubItem->setText(1, QString::number(pChunk->m_iOffset));
-		pSubItem->setText(2, QString::number(pChunk->m_iChunkSize));
-		pTopItem->addChild(pSubItem);
+		QTreeWidgetItem *pChunkItem = new QTreeWidgetItem(pTopItem);
+		pChunkItem->setText(0, IdToString(pChunk->m_iChunkID));
+		pChunkItem->setText(1, QString::number(pChunk->m_iOffset));
+		pChunkItem->setText(2, QString::number(pChunk->m_iChunkSize));
+		pTopItem->addChild(pChunkItem);
+		
+		CIffSubChunk *pSubChunk = pChunk->m_pSubChunk;
+		while (pSubChunk != nullptr)
+		{
+			QTreeWidgetItem *pSubItem = new QTreeWidgetItem(pChunkItem);
+			pSubItem->setText(0, IdToString(pSubChunk->m_iChunkID));
+			pSubItem->setText(1, QString::number(pSubChunk->m_iOffset));
+			pSubItem->setText(2, QString::number(pSubChunk->m_iSize));
+			pChunkItem->addChild(pSubItem);
+			
+			pSubChunk = pSubChunk->m_pNextSub;
+		}
 		
 		pChunk = pChunk->m_pNext;
 	}

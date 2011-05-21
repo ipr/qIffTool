@@ -209,7 +209,8 @@ bool CIffIlbm::ParseChunks()
 	{
 		// "raw" data of the chunk,
 		// locate by offset
-		uint8_t *pData = CIffContainer::GetViewByOffset(pChunk->m_iOffset, m_File);
+		uint8_t *pChunkData = CIffContainer::GetViewByOffset(pChunk->m_iOffset, m_File);
+		//uint8_t *pChunkEnd = CIffContainer::GetViewByOffset(pChunk->m_iOffset + pChunk->m_iChunkSize, m_File);
 
 		// suitable handling for chunk data..
 		if (pChunk->m_iChunkID == MakeTag("BMHD"))
@@ -217,65 +218,78 @@ bool CIffIlbm::ParseChunks()
 			// BMHD bitmap header chunk:
 			// should be first in file (according to spec)
 			// and needed by later processing of data
-			ParseBitmapHeader(pData, pChunk);
+			ParseBitmapHeader(pChunkData, pChunk);
 		}
 		else if (pChunk->m_iChunkID == MakeTag("CMAP"))
 		{
 			// CMAP color map chunk
-
 			int iCount = (pChunk->m_iChunkSize/sizeof(ColorRegister));
 			m_pCmap = new ColorRegister[iCount];
 
 			// bytes only, copy as-is: no need for byteswap
-			::memcpy(m_pCmap, pData, pChunk->m_iChunkSize);
+			::memcpy(m_pCmap, pChunkData, iCount*sizeof(ColorRegister));
 		}
 		else if (pChunk->m_iChunkID == MakeTag("GRAB"))
 		{
 			// GRAB "hotspot" position (optional)
 			// (e.g. brush center)
-			Point2D Pt;
 			Point2D *pPt = (Point2D*)pData;
-			Pt.x = Swap2(pPt->x);
-			Pt.y = Swap2(pPt->y);
+			m_Pt2d.x = Swap2(pPt->x);
+			m_Pt2d.y = Swap2(pPt->y);
 		}
 		else if (pChunk->m_iChunkID == MakeTag("DEST"))
 		{
 			// DEST (optional)
-			DestMerge Dst;
-			DestMerge *pDst = (DestMerge*)pData;
-			Dst.depth = pDst->depth;
-			Dst.pad1 = pDst->pad1;
-			Dst.planePick = Swap2(pDst->planePick);
-			Dst.planeOnOff = Swap2(pDst->planeOnOff);
-			Dst.planeMask = Swap2(pDst->planeMask);
+			DestMerge *pDst = (DestMerge*)pChunkData;
+			m_DestMerge.depth = pDst->depth;
+			m_DestMerge.pad1 = pDst->pad1; // padding, not necessary
+			m_DestMerge.planePick = Swap2(pDst->planePick);
+			m_DestMerge.planeOnOff = Swap2(pDst->planeOnOff);
+			m_DestMerge.planeMask = Swap2(pDst->planeMask);
 		}
 		else if (pChunk->m_iChunkID == MakeTag("CRNG"))
 		{
 			// CRNG (optional), "nonstandard"
 			// used by e.g. EA Deluxe Paint
+			CRange *pRange = (CRange*)pChunkData;
+			m_Range.pad1 = Swap2(pRange->pad1); // padding, not necessary
+			m_Range.rate = Swap2(pRange->rate);
+			m_Range.active = Swap2(pRange->active);
+			m_Range.low = pRange->low;
+			m_Range.high = pRange->high;
 		}
 		else if (pChunk->m_iChunkID == MakeTag("CCRT"))
 		{
 			// CCRT (optional)
+			// (Color Cycling Range and Timing)
+			CycleInfo *pCcrt = (CycleInfo*)pChunkData;
+			m_CycleInfo.direction = Swap2(pCcrt->direction);
+			m_CycleInfo.start = pCcrt->start;
+			m_CycleInfo.end = pCcrt->end;
+			m_CycleInfo.seconds = Swap4(pCcrt->seconds);
+			m_CycleInfo.microseconds = Swap4(pCcrt->microseconds);
+			m_CycleInfo.pad = Swap2(pCcrt->pad); // padding, not necessary
 		}
 		else if (pChunk->m_iChunkID == MakeTag("SPRT"))
 		{
 			// SPRT (optional),
-			// when image intended as a sprite
-			SpritePrecedence Sprt = Swap2((*(SpritePrecedence*)pData));
+			// when image intended as a sprite:
+			// "Z"-plane order of sprite (0 foremost)
+			m_SpriteOrder = Swap2((*(SpritePrecedence*)pChunkData));
 		}
 		else if (pChunk->m_iChunkID == MakeTag("CAMG"))
 		{
 			// CAMG (optional),
 			// Amiga "viewport mode"
 			// e.g. "dual playfield", "hold and modify"
+			m_lViewPortMode = Swap4((*((LONG*)pChunkData)));
 		}
 		else if (pChunk->m_iChunkID == MakeTag("BODY"))
 		{
 			// BODY raster body chunk
 			// content is concatenation of scan lines
 
-			ParseBody(pData, pChunk);
+			ParseBody(pChunkData, pChunk);
 		}
 
 		pChunk = pChunk->m_pNext;

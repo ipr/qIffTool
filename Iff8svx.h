@@ -17,6 +17,10 @@
 #include "MemoryMappedFile.h"
 #include "IffContainer.h"
 
+// std::string, for keeping sample-info
+#include <string>
+
+
 // support for old-style decl
 //
 typedef int8_t BYTE;
@@ -81,6 +85,13 @@ private:
 protected:
 
 	Voice8Header m_VoiceHeader;
+	
+	std::string m_szName; // NAME
+	std::string m_szAuthor; // AUTH
+	std::string m_szAnnotation; // ANNO
+	std::string m_szCopyright; // (c)
+	
+	void ParseBody(uint8_t *pData, CIffChunk *pChunk);
 
 public:
 	CIff8svx(void);

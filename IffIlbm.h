@@ -69,7 +69,7 @@ typedef struct {
 
 //// GRAB
 typedef struct {
-	WORD x, y;	/* relative coordinates (pixels) */
+	WORD x; WORD y;	/* relative coordinates (pixels) */
 	} Point2D;
 
 //// DEST
@@ -89,7 +89,8 @@ typedef struct {
 	WORD  pad1;	/* reserved for future use; store 0 here	*/
 	WORD  rate;	/* color cycle rate	*/
 	WORD  active;	/* nonzero means cycle the colors	*/
-	UBYTE low, high; /* lower and upper color registers selected	*/
+	UBYTE low; /* lower and upper color registers selected	*/
+	UBYTE high; 
 	} CRange;
 
 //// CCRT
@@ -114,9 +115,20 @@ private:
 protected:
 
 	// bitmap header required to parse actual data in BODY-chunk
-	BitMapHeader m_BmHeader; // single struct
-	ColorRegister *m_pCmap; // array
+	BitMapHeader m_BmHeader; // BMHD
+	
+	ColorRegister *m_pCmap; // CMAP, array
+	
+	Point2D m_Pt2d; // GRAB
+	DestMerge m_DestMerge; // DEST
+	CRange m_Range; // CRNG
+	CycleInfo m_CycleInfo; // CCRT
+	SpritePrecedence m_SpriteOrder; // SPRT
+	LONG m_lViewPortMode; // CAMG
 
+	
+protected:
+	
 	// virtual overload to generate IFF-ILBM chunk handlers
 	//virtual CIffChunk *CreateChunkDesc(CIffHeader *pHead, uint32_t iChunkID)
 

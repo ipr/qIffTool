@@ -132,17 +132,27 @@ protected:
 	// virtual overload to generate IFF-ILBM chunk handlers
 	//virtual CIffChunk *CreateChunkDesc(CIffHeader *pHead, uint32_t iChunkID)
 
-	bool ParseBitmapHeader(uint8_t *pData, CIffChunk *pChunk);
-	void ParseBody(uint8_t *pData, CIffChunk *pChunk);
+	bool ParseBitmapHeader(uint8_t *pChunkData, CIffChunk *pChunk);
+	void ParseBody(uint8_t *pChunkData, CIffChunk *pChunk);
 
 	inline void DecompressByteRun1(uint8_t *pData, const int64_t ickEnd, int64_t &iChOffset, UBYTE *pLine);
 
+	virtual void OnChunk(CIffChunk *pChunk, CMemoryMappedFile &pFile);
+	
+	virtual bool IsSupportedType(CIffHeader *pHeader)
+	{
+		if (pHeader->m_iTypeID == MakeTag("ILBM"))
+		{
+			return true;
+		}
+		return false;
+	}
+	
 public:
 	CIffIlbm(void);
 	virtual ~CIffIlbm(void);
 
 	bool ParseFile(LPCTSTR szPathName);
-	bool ParseChunks();
 };
 
 #endif // ifndef _IFFILBM_H_

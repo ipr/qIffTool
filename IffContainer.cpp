@@ -12,12 +12,12 @@
 #include "IffContainer.h"
 
 
-uint16_t CIffContainer::Swap2(const uint16_t val)
+uint16_t CIffContainer::Swap2(const uint16_t val) const
 {
    return (((val >> 8)) | (val << 8));
 }
 
-uint32_t CIffContainer::Swap4(const uint32_t val)
+uint32_t CIffContainer::Swap4(const uint32_t val) const
 {
 	// swap bytes
 	return (
@@ -27,12 +27,12 @@ uint32_t CIffContainer::Swap4(const uint32_t val)
 }
 
 /* 32-bit format but some may use 64-bit values also?
-uint64_t CIffContainer::Swap8(const uint64_t val)
+uint64_t CIffContainer::Swap8(const uint64_t val) const
 {
 }
 */
 
-float CIffContainer::SwapF(const float fval)
+float CIffContainer::SwapF(const float fval) const
 {
 	// must have value where we can take address (not from function parameter),
 	// cast via "bit-array" to another type:
@@ -45,7 +45,7 @@ float CIffContainer::SwapF(const float fval)
 }
 
 /* 32-bit format but some may use 64-bit values also?
-double CIffContainer::SwapD(const double dval)
+double CIffContainer::SwapD(const double dval) const
 {
 	// similar to byteswap on float,
 	// avoid int<->float conversion/rounding errors during byteswap
@@ -58,7 +58,7 @@ double CIffContainer::SwapD(const double dval)
 */
 
 // combine individual chars to tag in 32-bit int
-uint32_t CIffContainer::MakeTag(const char *buf)
+uint32_t CIffContainer::MakeTag(const char *buf) const
 {
 	// note: little-endian CPU with big-endian data
 	uint32_t tmp = 0;
@@ -79,7 +79,7 @@ uint32_t CIffContainer::MakeTag(const char *buf)
 	*/
 }
 
-uint32_t CIffContainer::GetValueAtOffset(const int64_t iOffset, CMemoryMappedFile &pFile)
+uint32_t CIffContainer::GetValueAtOffset(const int64_t iOffset, CMemoryMappedFile &pFile) const
 {
 	// byte-pointer to given offset, get value as 4-byte int
 	uint8_t *pData = (uint8_t*)pFile.GetView();
@@ -87,21 +87,22 @@ uint32_t CIffContainer::GetValueAtOffset(const int64_t iOffset, CMemoryMappedFil
 	return (*((uint32_t*)pData));
 }
 
-uint8_t *CIffContainer::GetViewByOffset(const int64_t iOffset, CMemoryMappedFile &pFile)
+uint8_t *CIffContainer::GetViewByOffset(const int64_t iOffset, CMemoryMappedFile &pFile) const
 {
 	uint8_t *pData = (uint8_t*)pFile.GetView();
 	return (pData + iOffset);
 }
 
-CIffHeader *CIffContainer::ReadHeader(int64_t &iOffset, CMemoryMappedFile &pFile)
+CIffHeader *CIffContainer::ReadHeader(int64_t &iOffset, CMemoryMappedFile &pFile) const
 {
 	// at least header must exist in file
-	if (pFile.GetSize() < 8)
+	if (iOffset+8 > pFile.GetSize())
 	{
 		return nullptr;
 	}
 
-	uint32_t *pData = (uint32_t*)pFile.GetView();
+	// in case we are reading composite-FORM -> offset view
+	uint32_t *pData = (uint32_t*)GetViewByOffset(iOffset, pFile);
 	CIffHeader *pHeader = new CIffHeader();
 	pHeader->m_iFileID = pData[0]; // generic type, "FORM" usually
 
@@ -110,7 +111,7 @@ CIffHeader *CIffContainer::ReadHeader(int64_t &iOffset, CMemoryMappedFile &pFile
 	pHeader->m_iDataSize = Swap4(pData[1]); // datasize according to header
 
 	iOffset = 8; // after header
-	if (pFile.GetSize() >= 12)
+	if (! (iOffset+4 > pFile.GetSize()))
 	{
 		pHeader->m_iTypeID = pData[2]; // actual file type (e.g. ILBM);
 		iOffset = 12;
@@ -118,10 +119,10 @@ CIffHeader *CIffContainer::ReadHeader(int64_t &iOffset, CMemoryMappedFile &pFile
 	return pHeader;
 }
 
-CIffChunk *CIffContainer::ReadNextChunk(int64_t &iOffset, CMemoryMappedFile &pFile)
+CIffChunk *CIffContainer::ReadNextChunk(int64_t &iOffset, CMemoryMappedFile &pFile) const
 {
 	// no more chunks
-	if ((pFile.GetSize() - iOffset) < 8)
+	if (iOffset+8 > pFile.GetSize())
 	{
 		return nullptr;
 	}
@@ -141,38 +142,9 @@ CIffChunk *CIffContainer::ReadNextChunk(int64_t &iOffset, CMemoryMappedFile &pFi
 	return pCurrent;
 }
 
-CIffHeader *CIffContainer::ParseFileChunks(CMemoryMappedFile &pFile)
+void CIffContainer::ReadChunks(int64_t &iOffset, CIffHeader *pHeader, CMemoryMappedFile &pFile)
 {
-	int64_t iOffset = 0;
-	
-	CIffHeader *pHead = ReadHeader(iOffset, pFile);
-	if (pHead == nullptr)
-	{
-		// failure reading?
-		return pHead;
-	}
-	m_pHeader = pHead;
-	
-	/* for composite-forms?
-	if (m_pHeader == nullptr)
-	{
-		m_pHeader = pHead;
-	}
-	else
-	{
-		m_pHeader->m_Composite = pNext;
-	}
-	*/
-
-	/*
-	CIffChunk *pCurrent = ReadFirstChunk(pHead, iOffset, pFile);
-	if (pCurrent == nullptr)
-	{
-		return pHead;
-	}
-	*/
-	
-	CIffChunk *pPrev = nullptr;
+	CIffChunk *pPrev = pHeader->m_pFirst;
 
 	// verify we end also:
 	// in case of padding we might have infinite loop
@@ -191,25 +163,31 @@ CIffHeader *CIffContainer::ParseFileChunks(CMemoryMappedFile &pFile)
 			}
 			else
 			{
-				// first
-				pHead->m_pFirst = pNext;
+				// first -> keep on header
+				pHeader->m_pFirst = pNext;
 			}
 			pPrev = pNext;
 		}
+
+		// call virtual method which user can implement:
+		// allows single-pass processing of file-contents
+		OnChunk(pPrev, pFile);
 		
 		// TODO: sub-chunks of node?
 		// (these are file-type and node specific if any..)
 		//CreateSubChunkNode(pPrev, iOffset, pFile);
 		
 		// composite FORM?
-		// -> currently not supported.. (bug)
 		if (pPrev->m_iChunkID == MakeTag("FORM"))
 		{
-			break;
+			// read new composite
+			CIffHeader *pNewHead = ReadHeader(iOffset, pFile);
+			pHeader->AddComposite(pNewHead);
+			
+			// read chunks of found composite
+			ReadChunks(iOffset, pNewHead, pFile);
 		}
 	}
-
-	return pHead;
 }
 
 
@@ -242,31 +220,31 @@ CIffHeader *CIffContainer::ParseIffFile(CMemoryMappedFile &pFile)
 	// note: also may have LIST or CAT with FORM sub-chunk
 	// (e.g. anim-file may include both pics and sound)
 	//
-	// TODO: prepare const values for tags?	
-	//
-	if (pData[0] == MakeTag("FORM")
-	    || pData[0] == MakeTag("LIST")
-	    || pData[0] == MakeTag("CAT ")) 
-	{
-		return ParseFileChunks(pFile);
-	}
-
-	/*
-	if (::memcmp(pFile.GetView(), "FORM", 4) != 0)
+	if (pData[0] != MakeTag("FORM")
+	    && pData[0] != MakeTag("LIST")
+	    && pData[0] != MakeTag("CAT ")) 
 	{
 		// nothing to do, unsupported file
 		return nullptr;
 	}
-	*/
 
-	// invalid size of file
-	/*
-	if ((pHead->m_iFileSize +12) > pFile->GetSize())
+	int64_t iOffset = 0;
+
+	// start of file
+	m_pHeader = ReadHeader(iOffset, pFile);
+	if (m_pHeader == nullptr)
 	{
+		// failure reading?
+		return nullptr;
 	}
-	*/
+	
+	// inherited can re-implement to allow only some types
+	// such as only 8SVX or ILBM etc.
+	IsSupportedType(m_pHeader);
+	
+	// read chunks, recursion when necessary
+	ReadChunks(iOffset, m_pHeader, pFile);
 
-	// nothing to do, unsupported file
-	return nullptr;
+	return m_pHeader;
 }
 

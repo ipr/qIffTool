@@ -23,7 +23,7 @@
 
 // support for old-style decl
 //
-typedef int8_t BYTE;
+//typedef int8_t BYTE;
 typedef uint8_t UBYTE;
 //typedef int16_t WORD;
 typedef uint16_t UWORD;
@@ -91,8 +91,19 @@ protected:
 	std::string m_szAnnotation; // ANNO
 	std::string m_szCopyright; // (c)
 	
-	void ParseBody(uint8_t *pData, CIffChunk *pChunk);
+	void ParseBody(uint8_t *pChunkData, CIffChunk *pChunk);
 
+	virtual void OnChunk(CIffChunk *pChunk, CMemoryMappedFile &pFile);
+	
+	virtual bool IsSupportedType(CIffHeader *pHeader)
+	{
+		if (pHeader->m_iTypeID == MakeTag("8SVX"))
+		{
+			return true;
+		}
+		return false;
+	}
+	
 public:
 	CIff8svx(void);
 	virtual ~CIff8svx(void);

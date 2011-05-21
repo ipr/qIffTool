@@ -117,6 +117,7 @@ class CIffHeader
 public:
 	CIffHeader() 
 		: m_pFirst(nullptr)
+	    , m_pComposite(nullptr)
 	    , m_iTypeID(0)
 		, m_iFileID(0)
 		, m_iDataSize(0)
@@ -143,15 +144,26 @@ public:
 		m_pFirst = nullptr;
 	}
 
+	void AddComposite(CIffHeader *pSubForm)
+	{
+		if (m_pComposite == nullptr)
+		{
+			m_pComposite = pSubForm;
+		}
+		else
+		{
+			// recusive call to locate last
+			m_pComposite->AddComposite(pSubForm);
+		}
+	}
 
 	// start from first chunk in file
 	CIffChunk *m_pFirst;
 	
 	// in case of composite-files
 	// (e.g. ANIM with audio&images)
-	//CIffHeader *m_pComposite;
-	// also need offset?
-	//int64_t m_iOffset;
+	// TODO: should have list of these?
+	CIffHeader *m_pComposite;
 	
 	// type of payload in this FORM:
 	// ILBM/8SVX or other
@@ -182,25 +194,43 @@ protected:
 	// (note, should make inline but also needed in inherited classes..)
 
 	// byteswap methods
-	uint16_t Swap2(const uint16_t val);
-	uint32_t Swap4(const uint32_t val);
-	//uint64_t Swap8(const uint64_t val);
-	float SwapF(const float fval);
-	//double SwapD(const double dval);
+	uint16_t Swap2(const uint16_t val) const;
+	uint32_t Swap4(const uint32_t val) const;
+	//uint64_t Swap8(const uint64_t val) const;
+	float SwapF(const float fval) const;
+	//double SwapD(const double dval) const;
 
 	// make tag from string
-	uint32_t MakeTag(const char *buf);
+	uint32_t MakeTag(const char *buf) const;
 
-	uint32_t GetValueAtOffset(const int64_t iOffset, CMemoryMappedFile &pFile);
-	uint8_t *GetViewByOffset(const int64_t iOffset, CMemoryMappedFile &pFile);
+	uint32_t GetValueAtOffset(const int64_t iOffset, CMemoryMappedFile &pFile) const;
+	uint8_t *GetViewByOffset(const int64_t iOffset, CMemoryMappedFile &pFile) const;
 
-	CIffHeader *ReadHeader(int64_t &iOffset, CMemoryMappedFile &pFile);
-	CIffChunk *ReadNextChunk(int64_t &iOffset, CMemoryMappedFile &pFile);
-	CIffHeader *ParseFileChunks(CMemoryMappedFile &pFile);
+	CIffHeader *ReadHeader(int64_t &iOffset, CMemoryMappedFile &pFile) const;
+	CIffChunk *ReadNextChunk(int64_t &iOffset, CMemoryMappedFile &pFile) const;
+	
+	void ReadChunks(int64_t &iOffset, CIffHeader *pHeader, CMemoryMappedFile &pFile);
 
 protected:
 
 	// methods which user might want to overload on inheritance
+
+	// called on each found chunk when found:
+	// user can process chunk-data immediately for single-pass handling.
+	//
+	// default implementation does nothing (empty)
+	//
+	virtual void OnChunk(CIffChunk *pChunk, CMemoryMappedFile &pFile) 
+	{}
+	
+	// called on found file-header:
+	// user can re-implement to allow certain types only
+	//
+	virtual bool IsSupportedType(CIffHeader *pHeader)
+	{
+		// generic: all supported
+		return true;
+	}
 
 	// simple example: IFF-ILBM picture with chunk CMAP
 	// -> create handler for that type of chunk.
@@ -244,6 +274,9 @@ public:
 	virtual ~CIffContainer(void);
 
 	CIffHeader *ParseIffFile(CMemoryMappedFile &pFile);
+
+	// TODO:?
+	//CIffHeader *ParseIffBuffer(CMemoryMappedFile &pFile);
 };
 
 #endif // ifndef _IFFCONTAINER_H_

@@ -174,11 +174,11 @@ void CIffIlbm::OnChunk(CIffChunk *pChunk, CMemoryMappedFile &pFile)
 	else if (pChunk->m_iChunkID == MakeTag("CMAP"))
 	{
 		// CMAP color map chunk
-		int iCount = (pChunk->m_iChunkSize/sizeof(ColorRegister));
-		m_pCmap = new ColorRegister[iCount];
+		m_lCmapCount = (pChunk->m_iChunkSize/sizeof(ColorRegister));
+		m_pCmap = new ColorRegister[m_lCmapCount];
 
 		// bytes only, copy as-is: no need for byteswap
-		::memcpy(m_pCmap, pChunkData, iCount*sizeof(ColorRegister));
+		::memcpy(m_pCmap, pChunkData, m_lCmapCount*sizeof(ColorRegister));
 	}
 	else if (pChunk->m_iChunkID == MakeTag("GRAB"))
 	{

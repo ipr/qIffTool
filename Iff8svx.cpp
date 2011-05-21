@@ -69,6 +69,11 @@ void CIff8svx::ParseBody(uint8_t *pChunkData, CIffChunk *pChunk)
 	// within each octave are one-shot and repeat portions
 	
 	// (see Voice8Header values)
+	if (m_VoiceHeader.sCompression == sCmpFibDelta)
+	{
+		// fibonacci delta compression used
+		// -> decompress
+	}
 }
 
 
@@ -100,7 +105,7 @@ void CIff8svx::OnChunk(CIffChunk *pChunk, CMemoryMappedFile &pFile)
 	else if (pChunk->m_iChunkID == MakeTag("ANNO"))
 	{
 		// string-data (CHAR[])
-		m_szAnnotation.assign((char*)pChunkData, pChunk->m_iChunkSize);
+		m_szAnnotations.assign((char*)pChunkData, pChunk->m_iChunkSize);
 	}
 	else if (pChunk->m_iChunkID == MakeTag("(c) "))
 	{
@@ -109,30 +114,30 @@ void CIff8svx::OnChunk(CIffChunk *pChunk, CMemoryMappedFile &pFile)
 	}
 	else if (pChunk->m_iChunkID == MakeTag("ATAK"))
 	{
-		// attack contour
+		// attack contour (envelope)
 		EGPoint *pEnvPt = (EGPoint*)pChunkData;
-		int iCount = (pChunk->m_iChunkSize / sizeof(EGPoint));
-		EGPoint *pAtak = new EGPoint[iCount];
+		m_lAtakCount = (pChunk->m_iChunkSize / sizeof(EGPoint));
+		m_pAtakPoint = new EGPoint[m_lAtakCount];
 		
-		// byteswap&copy
-		for (int i = 0; i < iCount; i++)
+		for (int i = 0; i < m_lAtakCount; i++)
 		{
-			pAtak[i].dest = Swap4(pEnvPt[i].dest);
-			pAtak[i].duration = Swap4(pEnvPt[i].duration);
+			// byteswap&copy
+			m_pAtakPoint[i].dest = Swap4(pEnvPt[i].dest);
+			m_pAtakPoint[i].duration = Swap4(pEnvPt[i].duration);
 		}
 	}
 	else if (pChunk->m_iChunkID == MakeTag("RLSE"))
 	{
-		// release contour
+		// release contour (envelope)
 		EGPoint *pEnvPt = (EGPoint*)pChunkData;
-		int iCount = (pChunk->m_iChunkSize / sizeof(EGPoint));
-		EGPoint *pRlse = new EGPoint[iCount];
+		m_lRlseCount = (pChunk->m_iChunkSize / sizeof(EGPoint));
+		m_pRlsePoint = new EGPoint[m_lRlseCount];
 		
-		// byteswap&copy
-		for (int i = 0; i < iCount; i++)
+		for (int i = 0; i < m_lRlseCount; i++)
 		{
-			pRlse[i].dest = Swap4(pEnvPt[i].dest);
-			pRlse[i].duration = Swap4(pEnvPt[i].duration);
+			// byteswap&copy
+			m_pRlsePoint[i].dest = Swap4(pEnvPt[i].dest);
+			m_pRlsePoint[i].duration = Swap4(pEnvPt[i].duration);
 		}
 	}
 	else if (pChunk->m_iChunkID == MakeTag("BODY"))

@@ -118,6 +118,7 @@ protected:
 	BitMapHeader m_BmHeader; // BMHD
 	
 	ColorRegister *m_pCmap; // CMAP, array
+	long m_lCmapCount;
 	
 	Point2D m_Pt2d; // GRAB
 	DestMerge m_DestMerge; // DEST

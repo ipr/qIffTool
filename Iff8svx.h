@@ -23,12 +23,10 @@
 
 // support for old-style decl
 //
-//typedef int8_t BYTE;
 typedef uint8_t UBYTE;
 //typedef int16_t WORD;
 typedef uint16_t UWORD;
 //typedef int32_t LONG;
-//typedef uint32_t ULONG;
 
 
 /* A fixed-point value, 16 bits to the left of the point and 16 
@@ -84,11 +82,16 @@ private:
 
 protected:
 
-	Voice8Header m_VoiceHeader;
+	Voice8Header m_VoiceHeader; // VHDR
 	
+	EGPoint *m_pAtakPoint; // ATAK
+	long m_lAtakCount;
+	EGPoint *m_pRlsePoint; // RLSE
+	long m_lRlseCount;
+
 	std::string m_szName; // NAME
 	std::string m_szAuthor; // AUTH
-	std::string m_szAnnotation; // ANNO
+	std::string m_szAnnotations; // ANNO
 	std::string m_szCopyright; // (c)
 	
 	void ParseBody(uint8_t *pChunkData, CIffChunk *pChunk);

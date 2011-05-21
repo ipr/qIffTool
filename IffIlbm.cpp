@@ -162,7 +162,6 @@ void CIffIlbm::DecompressByteRun1(uint8_t *pData, const int64_t ickEnd, int64_t 
 CIffIlbm::CIffIlbm(void)
 	: CIffContainer()
 	, m_File()
-	, m_pHead(nullptr)
 	, m_pCmap(nullptr)
 {
 }
@@ -174,11 +173,6 @@ CIffIlbm::~CIffIlbm(void)
 		delete m_pCmap;
 		m_pCmap = nullptr;
 	}
-	if (m_pHead != nullptr)
-	{
-		delete m_pHead;
-		m_pHead = nullptr;
-	}
 	m_File.Destroy();
 }
 
@@ -189,8 +183,8 @@ bool CIffIlbm::ParseFile(LPCTSTR szPathName)
 		return false;
 	}
 
-	m_pHead = ParseIffFile(m_File);
-	if (m_pHead == nullptr)
+	ParseIffFile(m_File);
+	if (m_pHeader == nullptr)
 	{
 		return false;
 	}
@@ -201,7 +195,7 @@ bool CIffIlbm::ParseFile(LPCTSTR szPathName)
 bool CIffIlbm::ParseChunks()
 {
 	// we expect ILBM-type IFF-file
-	if (m_pHead->m_iTypeID != MakeTag("ILBM"))
+	if (m_pHeader->m_iTypeID != MakeTag("ILBM"))
 	{
 		return false;
 	}

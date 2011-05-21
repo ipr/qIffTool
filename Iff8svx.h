@@ -19,6 +19,7 @@
 
 // support for old-style decl
 //
+typedef int8_t BYTE;
 typedef uint8_t UBYTE;
 //typedef int16_t WORD;
 typedef uint16_t UWORD;
@@ -45,26 +46,28 @@ typedef LONG Fixed;
 
 /* Can be more kinds in the future.	*/
 
-typedef struct {
-	ULONG oneShotHiSamples,	/* # samples in the high octave 1-shot part */
-        repeatHiSamples,	/* # samples in the high octave repeat part */
-        samplesPerHiCycle;	/* # samples/cycle in high octave, else 0   */
-	UWORD samplesPerSec;	/* data sampling rate	*/
-	UBYTE ctOctave,		/* # octaves of waveforms	*/
-      	sCompression;		/* data compression technique used	*/
-	Fixed volume;		/* playback volume from 0 to Unity (full 
+typedef struct 
+{
+	ULONG oneShotHiSamples;	    /* # samples in the high octave 1-shot part */
+    ULONG repeatHiSamples;	    /* # samples in the high octave repeat part */
+    ULONG samplesPerHiCycle;	/* # samples/cycle in high octave, else 0   */
+	UWORD samplesPerSec;	    /* data sampling rate	*/
+	UBYTE ctOctave;		/* # octaves of waveforms	*/
+    UBYTE sCompression;		/* data compression technique used	*/
+	Fixed volume;		    /* playback volume from 0 to Unity (full 
 				 * volume). Map this value into the output 
 				 * hardware's dynamic range.	*/
-	} Voice8Header;
+} Voice8Header;
 
 
 /* ATAK and RLSE chunks contain an EGPoint[], piecewise-linear envelope.*/ 
 /* The envelope defines a function of time returning Fixed values. It's
  * used to scale the nominal volume specified in the Voice8Header. */
-typedef struct {
+typedef struct 
+{
 	UWORD duration;	/* segment duration in milliseconds, > 0	*/
 	Fixed dest;	/* destination volume factor	*/
-	} EGPoint;
+} EGPoint;
 
 #pragma pack(pop)
 
@@ -73,10 +76,11 @@ class CIff8svx : public CIffContainer
 {
 private:
 	CMemoryMappedFile m_File;
-	CIffHeader *m_pHead;
+	//CIffHeader *m_pHead; // inherited now
 
 protected:
 
+	Voice8Header m_VoiceHeader;
 
 public:
 	CIff8svx(void);

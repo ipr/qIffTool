@@ -76,10 +76,18 @@ void MainWindow::onFileSelected(QString szArchiveFile)
 	szMsg.append("File size: ").append(QString::number(File.GetSize()))
 	        .append(" File type: ").append(IdToString(pHead->m_iTypeID));
 	ui->statusBar->showMessage(szMsg);
+
 	
 	// file head-chunk
+	
+	QString szIdString;
+	szIdString = IdToString(pHead->m_iFileID);
+	szIdString += "=";
+	szIdString += IdToString(pHead->m_iTypeID);
+	
 	QTreeWidgetItem *pTopItem = new QTreeWidgetItem((QTreeWidgetItem*)0);
-	pTopItem->setText(0, IdToString(pHead->m_iFileID));
+	pTopItem->setText(0, IdToString(pHead->m_iTypeID));
+	//pTopItem->setText(0, szIdString);
 	pTopItem->setText(1, QString::number(8));
 	pTopItem->setText(2, QString::number(pHead->m_iDataSize));
 	ui->treeWidget->addTopLevelItem(pTopItem);

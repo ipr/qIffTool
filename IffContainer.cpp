@@ -230,13 +230,6 @@ CIffContainer::~CIffContainer(void)
 
 CIffHeader *CIffContainer::ParseIffFile(CMemoryMappedFile &pFile)
 {
-	/*
-	if (pFile == nullptr)
-	{
-		return nullptr;
-	}
-	*/
-
 	if (pFile.IsCreated() == false)
 	{
 		return nullptr;
@@ -249,10 +242,13 @@ CIffHeader *CIffContainer::ParseIffFile(CMemoryMappedFile &pFile)
 	// note: also may have LIST or CAT with FORM sub-chunk
 	// (e.g. anim-file may include both pics and sound)
 	//
-	if (pData[0] != MakeTag("FORM")) // TODO: prepare const values for tags?
+	// TODO: prepare const values for tags?	
+	//
+	if (pData[0] == MakeTag("FORM")
+	    || pData[0] == MakeTag("LIST")
+	    || pData[0] == MakeTag("CAT ")) 
 	{
-		// nothing to do, unsupported file
-		return nullptr;
+		return ParseFileChunks(pFile);
 	}
 
 	/*
@@ -270,6 +266,7 @@ CIffHeader *CIffContainer::ParseIffFile(CMemoryMappedFile &pFile)
 	}
 	*/
 
-	return ParseFileChunks(pFile);
+	// nothing to do, unsupported file
+	return nullptr;
 }
 

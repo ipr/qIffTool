@@ -109,13 +109,13 @@ class CIffIlbm : public CIffContainer
 {
 private:
 	CMemoryMappedFile m_File;
-	CIffHeader *m_pHead;
+	//CIffHeader *m_pHead; // inherited now
 
 protected:
 
 	// bitmap header required to parse actual data in BODY-chunk
-	BitMapHeader m_BmHeader;
-	ColorRegister *m_pCmap;
+	BitMapHeader m_BmHeader; // single struct
+	ColorRegister *m_pCmap; // array
 
 	// virtual overload to generate IFF-ILBM chunk handlers
 	//virtual CIffChunk *CreateChunkDesc(CIffHeader *pHead, uint32_t iChunkID)

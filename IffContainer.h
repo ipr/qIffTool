@@ -118,6 +118,8 @@ public:
 	CIffHeader() 
 		: m_pFirst(nullptr)
 	    , m_pComposite(nullptr)
+	    //, m_pParent(nullptr)
+	    , m_iOffset(0)
 	    , m_iTypeID(0)
 		, m_iFileID(0)
 		, m_iDataSize(0)
@@ -127,6 +129,7 @@ public:
 	~CIffHeader()
 	{
 		DestroyChunks();
+		DestroyComposites();
 	}
 
 	void DestroyChunks()
@@ -142,6 +145,19 @@ public:
 			pCurrent = pNext;
 		}
 		m_pFirst = nullptr;
+	}
+	
+	// only top-most should do this 
+	// so that recursion won't reach stack-limit?
+	void DestroyComposites()
+	{
+		// temp, use recursion..
+		CIffHeader *pComposite = m_pComposite;
+		m_pComposite = nullptr; // avoid secondary-destruction by mistake
+		if (pComposite != nullptr)
+		{
+			pComposite->DestroyComposites();
+		}
 	}
 
 	void AddComposite(CIffHeader *pSubForm)
@@ -164,6 +180,12 @@ public:
 	// (e.g. ANIM with audio&images)
 	// TODO: should have list of these?
 	CIffHeader *m_pComposite;
+	// parent of composite-FORM
+	//CIffHeader *m_pParent;
+	
+	// offset to start of data in actual file
+	// (from start of file): we maintain this
+	int64_t m_iOffset;
 	
 	// type of payload in this FORM:
 	// ILBM/8SVX or other

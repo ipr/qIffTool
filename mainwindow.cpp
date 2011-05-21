@@ -40,6 +40,25 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::on_actionAbout_triggered()
+{
+	QTextEdit *pTxt = new QTextEdit(this);
+	pTxt->setWindowFlags(Qt::Window); //or Qt::Tool, Qt::Dialog if you like
+	pTxt->setReadOnly(true);
+	pTxt->append("qIffTool by Ilkka Prusi 2011");
+	pTxt->append("");
+	pTxt->append("This program is free to use and distribute. No warranties of any kind.");
+	pTxt->append("Program uses Qt 4.7.2 under LGPL v. 2.1");
+	pTxt->append("");
+	pTxt->append("Keyboard shortcuts:");
+	pTxt->append("");
+	pTxt->append("F = open file");
+	pTxt->append("Esc = close");
+	pTxt->append("? = about (this dialog)");
+	pTxt->append("");
+	pTxt->show();
+}
+
 void MainWindow::on_actionFile_triggered()
 {
 	QString szFile = QFileDialog::getOpenFileName(this, tr("Open file"));
@@ -52,7 +71,6 @@ void MainWindow::on_actionFile_triggered()
 void MainWindow::onFileSelected(QString szArchiveFile)
 {
 	ClearAll();
-
 	
 	std::wstring szFile = szArchiveFile.toStdWString();
 	CMemoryMappedFile File;
@@ -88,10 +106,54 @@ void MainWindow::onFileSelected(QString szArchiveFile)
 	QTreeWidgetItem *pTopItem = new QTreeWidgetItem((QTreeWidgetItem*)0);
 	pTopItem->setText(0, IdToString(pHead->m_iTypeID));
 	//pTopItem->setText(0, szIdString);
-	pTopItem->setText(1, QString::number(8));
+	pTopItem->setText(1, QString::number(pHead->m_iOffset));
 	pTopItem->setText(2, QString::number(pHead->m_iDataSize));
 	ui->treeWidget->addTopLevelItem(pTopItem);
 	
+	m_FormToItem.insert(pHead, pTopItem);
+	
+	CIffHeader *pComposite = pHead->m_pComposite;
+	while (pComposite != nullptr)
+	{
+		HeaderToDisplay(pComposite);
+		pComposite = pComposite->m_pComposite;
+	}
+	ChunksToDisplay(pHead, pTopItem);
+	
+	
+	ui->treeWidget->expandAll();
+	ui->treeWidget->resizeColumnToContents(0);
+	//ui->treeWidget->sortByColumn(1);
+}
+
+void MainWindow::HeaderToDisplay(CIffHeader *pHead)
+{
+	// note: should have parent when this method is called..
+	
+	QTreeWidgetItem *pTopItem = m_FormToItem.value(pHead, nullptr);
+	if (pTopItem == nullptr)
+	{
+		// need to rethink..
+		// note: parent should be added first..
+		//QTreeWidgetItem *pParent = m_FormToItem.value(pHead->m_pParent, nullptr);
+		//pTopItem = new QTreeWidgetItem(pParent);
+		
+		pTopItem = new QTreeWidgetItem((QTreeWidgetItem*)0);
+		
+		pTopItem->setText(0, IdToString(pHead->m_iTypeID));
+		pTopItem->setText(1, QString::number(pHead->m_iOffset));
+		pTopItem->setText(2, QString::number(pHead->m_iDataSize));
+		
+		//pParent->addChild(pTopItem);
+		
+		m_FormToItem.insert(pHead, pTopItem);
+	}
+	
+	ChunksToDisplay(pHead, pTopItem);
+}
+
+void MainWindow::ChunksToDisplay(CIffHeader *pHead, QTreeWidgetItem *pTopItem)
+{
 	// root-level chunk-nodes
 	CIffChunk *pChunk = pHead->m_pFirst;
 	while (pChunk != nullptr)
@@ -116,30 +178,8 @@ void MainWindow::onFileSelected(QString szArchiveFile)
 		
 		pChunk = pChunk->m_pNext;
 	}
-	
-	ui->treeWidget->expandAll();
-	ui->treeWidget->resizeColumnToContents(0);
-	//ui->treeWidget->sortByColumn(1);
 }
 
-void MainWindow::on_actionAbout_triggered()
-{
-	QTextEdit *pTxt = new QTextEdit(this);
-	pTxt->setWindowFlags(Qt::Window); //or Qt::Tool, Qt::Dialog if you like
-	pTxt->setReadOnly(true);
-	pTxt->append("qIffTool by Ilkka Prusi 2011");
-	pTxt->append("");
-	pTxt->append("This program is free to use and distribute. No warranties of any kind.");
-	pTxt->append("Program uses Qt 4.7.2 under LGPL v. 2.1");
-	pTxt->append("");
-	pTxt->append("Keyboard shortcuts:");
-	pTxt->append("");
-	pTxt->append("F = open file");
-	pTxt->append("Esc = close");
-	pTxt->append("? = about (this dialog)");
-	pTxt->append("");
-	pTxt->show();
-}
 
 // "unpack" ID-bytes to displayable string
 QString MainWindow::IdToString(uint32_t u32Id)
@@ -159,7 +199,7 @@ QString MainWindow::IdToString(uint32_t u32Id)
 void MainWindow::ClearAll()
 {
 	setWindowTitle(m_szBaseTitle);
-	
+	m_FormToItem.clear();
 	ui->treeWidget->clear();
 }
 

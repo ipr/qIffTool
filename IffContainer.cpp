@@ -110,12 +110,15 @@ CIffHeader *CIffContainer::ReadHeader(int64_t &iOffset, CMemoryMappedFile &pFile
 	// size before ID in header
 	pHeader->m_iDataSize = Swap4(pData[1]); // datasize according to header
 
-	iOffset = 8; // after header
+	iOffset += 8; // after header
 	if (! (iOffset+4 > pFile.GetSize()))
 	{
 		pHeader->m_iTypeID = pData[2]; // actual file type (e.g. ILBM);
-		iOffset = 12;
+		iOffset += 4;
 	}
+	
+	// position to where "header-data" (chunks) are..
+	pHeader->m_iOffset = iOffset;
 	return pHeader;
 }
 
@@ -137,8 +140,17 @@ CIffChunk *CIffContainer::ReadNextChunk(int64_t &iOffset, CMemoryMappedFile &pFi
 	pCurrent->m_iOffset = iOffset +8;
 
 	// offset to next chunk start
-	iOffset += (pCurrent->m_iChunkSize +8);
+	//
+	// note: when chunk has and odd-size of data
+	// we must offset by 1 for padding since each chunk
+	// should start at even-sized offset.
 	
+	iOffset += (pCurrent->m_iChunkSize +8);
+	if ((pCurrent->m_iChunkSize % 2) != 0)
+	{
+		// odd -> even
+		iOffset += 1;
+	}
 	return pCurrent;
 }
 
@@ -182,10 +194,23 @@ void CIffContainer::ReadChunks(int64_t &iOffset, CIffHeader *pHeader, CMemoryMap
 		{
 			// read new composite
 			CIffHeader *pNewHead = ReadHeader(iOffset, pFile);
-			pHeader->AddComposite(pNewHead);
-			
-			// read chunks of found composite
-			ReadChunks(iOffset, pNewHead, pFile);
+			if (pNewHead != nullptr)
+			{
+				/* // need to rethink..
+				if (pHeader->m_pParent != nullptr)
+				{
+					pNewHead->m_pParent = pHeader->m_pParent;
+				}
+				else
+				{
+					pNewHead->m_pParent = pHeader;
+				}
+				*/
+				pHeader->AddComposite(pNewHead);
+				
+				// read chunks of found composite
+				ReadChunks(iOffset, pNewHead, pFile);
+			}
 		}
 	}
 }

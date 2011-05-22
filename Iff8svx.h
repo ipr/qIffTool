@@ -17,7 +17,7 @@
 #include "MemoryMappedFile.h"
 #include "IffContainer.h"
 
-// std::string, for keeping sample-info
+// std::string, for keeping sample&copyright descriptions
 #include <string>
 
 
@@ -36,7 +36,6 @@ typedef LONG Fixed;
 #define Unity 0x10000L	/* Unity = Fixed 1.0 = maximum volume	*/
 
 /* sCompression: Choice of compression algorithm applied to the samples. */ 
-
 #define sCmpNone       0	/* not compressed	*/
 #define sCmpFibDelta   1	/* Fibonacci-delta encoding (Appendix C)  */
 
@@ -112,7 +111,7 @@ public:
 	virtual ~CIff8svx(void);
 
 	bool ParseFile(LPCTSTR szPathName);
-	bool ParseChunks();
+
 };
 
 #endif // ifndef _IFF8SVX_H_
